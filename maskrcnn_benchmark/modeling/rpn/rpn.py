@@ -118,7 +118,6 @@ class RPNModule(torch.nn.Module):
         self.cfg = cfg.clone()
 
         anchor_generator = make_anchor_generator(cfg)
-
         rpn_head = registry.RPN_HEADS[cfg.MODEL.RPN.RPN_HEAD]
         head = rpn_head(
             cfg, in_channels, anchor_generator.num_anchors_per_location()[0]
@@ -154,7 +153,11 @@ class RPNModule(torch.nn.Module):
         """
         objectness, rpn_box_regression = self.head(features)
         anchors = self.anchor_generator(images, features)
-
+        #anchors[[][]] N*lvls boxlist
+        #obj/box_reg: lvls * N * A * H * W
+        #print(anchors)
+        #print(len(objectness),objectness[0].shape)
+        #print(len(rpn_box_regression),rpn_box_regression[0].shape)
         if self.training:
             return self._forward_train(anchors, objectness, rpn_box_regression, targets)
         else:

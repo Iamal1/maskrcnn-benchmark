@@ -2,7 +2,7 @@
 import torch
 from torch.nn import functional as F
 
-from maskrcnn_benchmark.layers import smooth_l1_loss
+from maskrcnn_benchmark.layers import smooth_l1_loss, balanced_l1_loss
 from maskrcnn_benchmark.modeling.box_coder import BoxCoder
 from maskrcnn_benchmark.modeling.matcher import Matcher
 from maskrcnn_benchmark.structures.boxlist_ops import boxlist_iou
@@ -10,7 +10,10 @@ from maskrcnn_benchmark.modeling.balanced_positive_negative_sampler import (
     BalancedPositiveNegativeSampler
 )
 from maskrcnn_benchmark.modeling.utils import cat
-
+from maskrcnn_benchmark.modeling.libra_sampler import (
+    LibraSampler
+)
+import numpy
 
 class FastRCNNLossComputation(object):
     """
@@ -47,13 +50,14 @@ class FastRCNNLossComputation(object):
         # out of bounds
         matched_targets = target[matched_idxs.clamp(min=0)]
         matched_targets.add_field("matched_idxs", matched_idxs)
-        return matched_targets
+        return matched_targets, match_quality_matrix
 
     def prepare_targets(self, proposals, targets):
         labels = []
         regression_targets = []
+        match_quality_matrixs = []
         for proposals_per_image, targets_per_image in zip(proposals, targets):
-            matched_targets = self.match_targets_to_proposals(
+            matched_targets, match_quality_matrix = self.match_targets_to_proposals(
                 proposals_per_image, targets_per_image
             )
             matched_idxs = matched_targets.get_field("matched_idxs")
@@ -76,8 +80,9 @@ class FastRCNNLossComputation(object):
 
             labels.append(labels_per_image)
             regression_targets.append(regression_targets_per_image)
+            match_quality_matrixs.append(match_quality_matrix)
 
-        return labels, regression_targets
+        return labels, regression_targets, match_quality_matrixs
 
     def subsample(self, proposals, targets):
         """
@@ -90,7 +95,8 @@ class FastRCNNLossComputation(object):
             targets (list[BoxList])
         """
 
-        labels, regression_targets = self.prepare_targets(proposals, targets)
+        labels, regression_targets, match_quality_matrixs = self.prepare_targets(proposals, targets)
+        # sampled_pos_inds, sampled_neg_inds = self.fg_bg_sampler(labels, match_quality_matrixs)
         sampled_pos_inds, sampled_neg_inds = self.fg_bg_sampler(labels)
 
         proposals = list(proposals)
@@ -160,7 +166,7 @@ class FastRCNNLossComputation(object):
             box_regression[sampled_pos_inds_subset[:, None], map_inds],
             regression_targets[sampled_pos_inds_subset],
             size_average=False,
-            beta=1,
+            beta=1/3,
         )
         box_loss = box_loss / labels.numel()
 
@@ -180,6 +186,9 @@ def make_roi_box_loss_evaluator(cfg):
     fg_bg_sampler = BalancedPositiveNegativeSampler(
         cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE, cfg.MODEL.ROI_HEADS.POSITIVE_FRACTION
     )
+    # fg_bg_sampler = LibraSampler(
+    #     cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE, cfg.MODEL.ROI_HEADS.POSITIVE_FRACTION
+    # )
 
     cls_agnostic_bbox_reg = cfg.MODEL.CLS_AGNOSTIC_BBOX_REG
 

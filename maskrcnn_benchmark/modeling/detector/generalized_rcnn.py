@@ -2,7 +2,7 @@
 """
 Implements the Generalized R-CNN framework
 """
-
+import logging
 import torch
 from torch import nn
 
@@ -12,6 +12,7 @@ from ..backbone import build_backbone
 from ..rpn.rpn import build_rpn
 from ..roi_heads.roi_heads import build_roi_heads
 
+logger = logging.getLogger('general')
 
 class GeneralizedRCNN(nn.Module):
     """
@@ -47,6 +48,12 @@ class GeneralizedRCNN(nn.Module):
             raise ValueError("In training mode, targets should be passed")
         images = to_image_list(images)
         features = self.backbone(images.tensors)
+        #print (images.tensors.shape)
+        #for feat in features:
+        #    print(feat.shape)
+        #print (type(features))
+        #logger.info(images.tensors.shape)
+        #logger.info(features)
         proposals, proposal_losses = self.rpn(images, features, targets)
         if self.roi_heads:
             x, result, detector_losses = self.roi_heads(features, proposals, targets)

@@ -52,12 +52,13 @@ class Pooler(nn.Module):
     which is available thanks to the BoxList.
     """
 
-    def __init__(self, output_size, scales, sampling_ratio):
+    def __init__(self, output_size, scales, sampling_ratio, panet=False):
         """
         Arguments:
             output_size (list[tuple[int]] or list[int]): output size for the pooled region
             scales (list[float]): scales for each Pooler
             sampling_ratio (int): sampling ratio for ROIAlign
+            panet: apply roi to each feature level.
         """
         super(Pooler, self).__init__()
         poolers = []
@@ -74,6 +75,7 @@ class Pooler(nn.Module):
         lvl_min = -torch.log2(torch.tensor(scales[0], dtype=torch.float32)).item()
         lvl_max = -torch.log2(torch.tensor(scales[-1], dtype=torch.float32)).item()
         self.map_levels = LevelMapper(lvl_min, lvl_max)
+        self.panet = panet
 
     def convert_to_roi_format(self, boxes):
         concat_boxes = cat([b.bbox for b in boxes], dim=0)
@@ -102,23 +104,50 @@ class Pooler(nn.Module):
             return self.poolers[0](x[0], rois)
 
         levels = self.map_levels(boxes)
-
         num_rois = len(rois)
         num_channels = x[0].shape[1]
         output_size = self.output_size[0]
-
+        # print(x[0].shape,x[1].shape): n,c,h,w
         dtype, device = x[0].dtype, x[0].device
         result = torch.zeros(
             (num_rois, num_channels, output_size, output_size),
             dtype=dtype,
             device=device,
         )
-        for level, (per_level_feature, pooler) in enumerate(zip(x, self.poolers)):
-            idx_in_level = torch.nonzero(levels == level).squeeze(1)
-            rois_per_level = rois[idx_in_level]
-            result[idx_in_level] = pooler(per_level_feature, rois_per_level)
+        bl_out_list = []
+        if not self.panet:
+            for level, (per_level_feature, pooler) in enumerate(zip(x, self.poolers)):
+                idx_in_level = torch.nonzero(levels == level).squeeze(1)
+                rois_per_level = rois[idx_in_level]
+                result[idx_in_level] = pooler(per_level_feature, rois_per_level)
 
-        return result
+            return result
+        else:
+            for level, (per_level_feature, pooler) in enumerate(zip(x, self.poolers)):
+                xform_out = torch.zeros(
+                    (num_rois, num_channels, output_size, output_size),
+                    dtype=dtype,
+                    device=device,
+                )
+                xform_out[:] = pooler(per_level_feature, rois)
+                bl_out_list.append(xform_out)
+            return bl_out_list
+        # num_rois = len(rois)
+        # num_channels = x[0].shape[1]
+        # output_size = self.output_size[0]
+        # # print(x[0].shape,x[1].shape): n,c,h,w
+        # dtype, device = x[0].dtype, x[0].device
+        # result = torch.zeros(
+        #     (num_rois, num_channels, output_size, output_size),
+        #     dtype=dtype,
+        #     device=device,
+        # )
+        # for level, (per_level_feature, pooler) in enumerate(zip(x, self.poolers)):
+        #     idx_in_level = torch.nonzero(levels == level).squeeze(1)
+        #     rois_per_level = rois[idx_in_level]
+        #     result[idx_in_level] = pooler(per_level_feature, rois_per_level)
+
+        # return result
 
 
 def make_pooler(cfg, head_name):

@@ -7,7 +7,7 @@ from maskrcnn_benchmark.modeling import registry
 from maskrcnn_benchmark.modeling.make_layers import conv_with_kaiming_uniform
 from . import fpn as fpn_module
 from . import resnet
-
+from . import bfpn as bfpn_module
 
 @registry.BACKBONES.register("R-50-C4")
 @registry.BACKBONES.register("R-50-C5")
@@ -40,6 +40,20 @@ def build_resnet_fpn_backbone(cfg):
         ),
         top_blocks=fpn_module.LastLevelMaxPool(),
     )
+    # bfpn = bfpn_module.BFP(
+    #     in_channels=[
+    #         out_channels,
+    #         out_channels,
+    #         out_channels,
+    #         out_channels,
+    #         out_channels
+    #     ],
+    #     out_channels=out_channels,
+    #     num_outs=5,
+    #     normalize=cfg.MODEL.FPN.USE_GN, 
+    #     activation=cfg.MODEL.FPN.USE_RELU
+    # )
+    # model = nn.Sequential(OrderedDict([("body", body), ("fpn", fpn), ("bfpn", bfpn)]))
     model = nn.Sequential(OrderedDict([("body", body), ("fpn", fpn)]))
     model.out_channels = out_channels
     return model

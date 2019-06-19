@@ -6,6 +6,11 @@ from maskrcnn_benchmark.structures.bounding_box import BoxList
 from maskrcnn_benchmark.structures.segmentation_mask import SegmentationMask
 from maskrcnn_benchmark.structures.keypoint import PersonKeypoints
 
+from torch.distributions.beta import Beta
+from PIL import Image
+import logging
+logger = logging.getLogger("maskrcnn_benchmark.coco")
+import numpy
 
 min_keypoints_per_image = 10
 
@@ -64,6 +69,43 @@ class COCODataset(torchvision.datasets.coco.CocoDetection):
         self.transforms = transforms
 
     def __getitem__(self, idx):
+    #     '''
+    #     img is tensor now
+    #     '''
+    #     img_a, target_a, idx_a = self.get_one_item(idx)
+    #     img_b, target_b, idx_b = self.get_one_item((idx+1) % len(self.ids))
+    #     #merge them
+    #     #merge img
+    #     m = Beta(torch.tensor([1.5]), torch.tensor([1.5]))
+    #     cof_a = m.sample()
+    #     #cof_a = 0.5
+    #     c,ha,wa = img_a.shape
+    #     c,hb,wb = img_b.shape
+    #     h,w = (max(ha,hb),max(wa,wb))
+    #     img = img_a.new_zeros((c,h,w))
+    #     img[:,:ha,:wa] = cof_a * img_a
+    #     img[:,:hb,:wb] = (1-cof_a) * img_b
+
+    #     #merge labels and masks
+    #     boxes = torch.cat([target_a.bbox,target_b.bbox],dim=0)
+    #     target = BoxList(boxes, (w,h), mode="xyxy")
+        
+    #     classes = torch.cat([target_a.get_field('labels'),target_b.get_field('labels')],dim=0)
+    #     target.add_field("labels", classes)
+
+    #     masks = target_a.get_field("masks").instances.polygons + target_b.get_field("masks").instances.polygons
+    #     masks = SegmentationMask(masks, (w,h), mode='poly')
+    #     target.add_field("masks", masks)
+
+    #    # #add marks
+    #    # marks = [1]*target_a.bbox.size(0) +  [0] * target_b.bbox.size(0)
+    #    # target.add_field("marks", torch.tensor(marks))
+    #     cofs = [cof_a]*target_a.bbox.size(0) +  [1-cof_a] * target_b.bbox.size(0)
+    #     target.add_field('cofs',torch.tensor(cofs))
+        
+    #     return img, target, idx
+
+    # def get_one_item(self, idx):
         img, anno = super(COCODataset, self).__getitem__(idx)
 
         # filter crowd annotations

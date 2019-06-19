@@ -274,6 +274,7 @@ class PolygonInstance(object):
             assert isinstance(size, (int, float))
             size = size, size
 
+        #print(self.size)
         ratios = tuple(float(s) / float(s_orig) for s, s_orig in zip(size, self.size))
 
         if ratios[0] == ratios[1]:
@@ -380,6 +381,9 @@ class PolygonList(object):
 
     def crop(self, box):
         w, h = box[2] - box[0], box[3] - box[1]
+        #FIX for divide by zero error.
+        w = max(w,box[2]-box[2]+1)
+        h = max(h,box[3]-box[3]+1)
         cropped_polygons = []
         for polygon in self.polygons:
             cropped_polygons.append(polygon.crop(box))
@@ -460,8 +464,8 @@ class SegmentationMask(object):
             assert isinstance(size[1], torch.Tensor)
             size = size[0].item(), size[1].item()
 
-        assert isinstance(size[0], (int, float))
-        assert isinstance(size[1], (int, float))
+        assert isinstance(size[0], (int, float)),'{}{}'.format(size[0],type(size[0]))
+        assert isinstance(size[1], (int, float)),'{}{}'.format(size[1],type(size[1]))
 
         if mode == "poly":
             self.instances = PolygonList(instances, size)

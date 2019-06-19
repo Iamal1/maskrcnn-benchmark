@@ -25,6 +25,7 @@ from maskrcnn_benchmark.utils.imports import import_file
 from maskrcnn_benchmark.utils.logger import setup_logger
 from maskrcnn_benchmark.utils.miscellaneous import mkdir
 
+from tensorboardX import SummaryWriter
 
 def train(cfg, local_rank, distributed):
     model = build_detection_model(cfg)
@@ -52,7 +53,11 @@ def train(cfg, local_rank, distributed):
     )
     extra_checkpoint_data = checkpointer.load(cfg.MODEL.WEIGHT)
     arguments.update(extra_checkpoint_data)
-
+    #HACK: force the steps, could not change the lr from ckpt now.
+    scheduler.milestones = cfg.SOLVER.STEPS
+    # change lr 
+    #lr_ratio = cfg.SOLVER.BASE_LR / scheduler.base_lrs[-1]
+    #scheduler.base_lrs = [ base_lr * lr_ratio for base_lr in self.base_lrs ]
     data_loader = make_data_loader(
         cfg,
         is_train=True,
@@ -62,6 +67,7 @@ def train(cfg, local_rank, distributed):
 
     checkpoint_period = cfg.SOLVER.CHECKPOINT_PERIOD
 
+    tbwriter = SummaryWriter(cfg.OUTPUT_DIR)
     do_train(
         model,
         data_loader,
@@ -71,6 +77,7 @@ def train(cfg, local_rank, distributed):
         device,
         checkpoint_period,
         arguments,
+        tbwriter,
     )
 
     return model

@@ -57,6 +57,11 @@ class ROIMaskHead(torch.nn.Module):
                 with the `mask` field set
             losses (dict[Tensor]): During training, returns the losses for the
                 head. During testing, returns an empty dict.
+            if use maskiou module, we will return extra features for maskiou head.
+                roi_features (list[Tensor]): roi aligned feature for maskiou head
+                selected_mask (list[Tensor]): targeted mask for maskiou head
+                labels (list[Tensor]): target class label for maskiou head
+                maskiou_targets (list[Tensor]): maskiou training targets        
         """
 
         if self.training:
@@ -67,16 +72,24 @@ class ROIMaskHead(torch.nn.Module):
             x = features
             x = x[torch.cat(positive_inds, dim=0)]
         else:
-            x = self.feature_extractor(features, proposals)
+            x, roi_feature = self.feature_extractor(features, proposals)
         mask_logits = self.predictor(x)
 
-        if not self.training:
-            result = self.post_processor(mask_logits, proposals)
-            return x, result, {}
+        if self.cfg.MODEL.MASKIOU_ON: 
+            if not self.training:
+                result = self.post_processor(mask_logits, proposals)
+                return x, result, {}, roi_feature, result[0].get_field("mask"), result[0].get_field("labels"), None
+            loss_mask, selected_mask, labels, maskiou_targets = self.loss_evaluator(proposals, mask_logits, targets)
+            return x, all_proposals, dict(loss_mask=loss_mask), roi_feature, selected_mask, labels, maskiou_targets
+        else:
 
-        loss_mask = self.loss_evaluator(proposals, mask_logits, targets)
+            if not self.training:
+                result = self.post_processor(mask_logits, proposals)
+                return x, result, {}
 
-        return x, all_proposals, dict(loss_mask=loss_mask)
+            loss_mask = self.loss_evaluator(proposals, mask_logits, targets)
+
+            return x, all_proposals, dict(loss_mask=loss_mask)
 
 
 def build_roi_mask_head(cfg, in_channels):

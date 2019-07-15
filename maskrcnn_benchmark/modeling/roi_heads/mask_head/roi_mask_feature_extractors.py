@@ -1,4 +1,5 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
+#add iou_feature to output for maskiou
 from torch import nn
 from torch.nn import functional as F
 
@@ -216,14 +217,14 @@ class MaskRCNNFPN_adp_ff_FeatureExtractor(nn.Module):
         for i in range(1, len(x)):
             x[0] = torch.max(x[0], x[i])
         x = x[0]
-
+        roi_feature = x
         x = self.conv_fcn(x)
 
         batch_size = x.size(0)
         x_fcn = F.relu(self.upconv(self.mask_conv4(x)), inplace=True)
         x_ff = self.mask_fc(self.mask_conv5_fc(self.mask_conv4_fc(x)).view(batch_size, -1))
 
-        return [x_fcn, x_ff]
+        return [x_fcn, x_ff], roi_feature
 
 
 

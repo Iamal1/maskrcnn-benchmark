@@ -19,6 +19,7 @@ class Checkpointer(object):
         save_dir="",
         save_to_disk=None,
         logger=None,
+        only_model=False,
     ):
         self.model = model
         self.optimizer = optimizer
@@ -28,6 +29,7 @@ class Checkpointer(object):
         if logger is None:
             logger = logging.getLogger(__name__)
         self.logger = logger
+        self.only_model=only_model
 
     def save(self, name, **kwargs):
         if not self.save_dir:
@@ -38,10 +40,11 @@ class Checkpointer(object):
 
         data = {}
         data["model"] = self.model.state_dict()
-        if self.optimizer is not None:
-            data["optimizer"] = self.optimizer.state_dict()
-        if self.scheduler is not None:
-            data["scheduler"] = self.scheduler.state_dict()
+        if not self.only_model:
+            if self.optimizer is not None:
+                data["optimizer"] = self.optimizer.state_dict()
+            if self.scheduler is not None:
+                data["scheduler"] = self.scheduler.state_dict()
         data.update(kwargs)
 
         save_file = os.path.join(self.save_dir, "{}.pth".format(name))
@@ -60,12 +63,20 @@ class Checkpointer(object):
         self.logger.info("Loading checkpoint from {}".format(f))
         checkpoint = self._load_file(f)
         self._load_model(checkpoint)
-        if "optimizer" in checkpoint and self.optimizer:
-            self.logger.info("Loading optimizer from {}".format(f))
-            self.optimizer.load_state_dict(checkpoint.pop("optimizer"))
-        if "scheduler" in checkpoint and self.scheduler:
-            self.logger.info("Loading scheduler from {}".format(f))
-            self.scheduler.load_state_dict(checkpoint.pop("scheduler"))
+        if self.only_model:
+            if "optimizer" in checkpoint and self.optimizer:
+                self.logger.info("popping optimizer from {}".format(f))
+                checkpoint.pop("optimizer")
+            if "scheduler" in checkpoint and self.scheduler:
+                self.logger.info("popping scheduler from {}".format(f))
+                checkpoint.pop("scheduler")
+        else:
+            if "optimizer" in checkpoint and self.optimizer:
+                self.logger.info("Loading optimizer from {}".format(f))
+                self.optimizer.load_state_dict(checkpoint.pop("optimizer"))
+            if "scheduler" in checkpoint and self.scheduler:
+                self.logger.info("Loading scheduler from {}".format(f))
+                self.scheduler.load_state_dict(checkpoint.pop("scheduler"))
 
         # return any further checkpoint data
         return checkpoint
@@ -108,9 +119,10 @@ class DetectronCheckpointer(Checkpointer):
         save_dir="",
         save_to_disk=None,
         logger=None,
+        only_model=False,
     ):
         super(DetectronCheckpointer, self).__init__(
-            model, optimizer, scheduler, save_dir, save_to_disk, logger
+            model, optimizer, scheduler, save_dir, save_to_disk, logger, only_model
         )
         self.cfg = cfg.clone()
 

@@ -53,6 +53,7 @@ def train(cfg, local_rank, distributed):
     )
     extra_checkpoint_data = checkpointer.load(cfg.MODEL.WEIGHT)
     arguments.update(extra_checkpoint_data)
+    # arguments["iteration"] = 0
     #HACK: force the steps, could not change the lr from ckpt now.
     scheduler.milestones = cfg.SOLVER.STEPS
     # change lr 

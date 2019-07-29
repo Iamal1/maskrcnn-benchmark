@@ -37,3 +37,5 @@ dist/
 155.jpg
 right.jpg
 test_data.py
+/vis
+/demo/img_samples

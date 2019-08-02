@@ -24,7 +24,7 @@ class MaskPostProcessor(nn.Module):
         super(MaskPostProcessor, self).__init__()
         self.masker = masker
 
-    def forward(self, x, boxes):
+    def forward(self, x, boxes, maskiou_on=False):
         """
         Arguments:
             x (Tensor): the mask logits
@@ -44,6 +44,9 @@ class MaskPostProcessor(nn.Module):
         index = torch.arange(num_masks, device=labels.device)
         mask_prob = mask_prob[index, labels][:, None]
 
+        # for maskiou
+        selected_masks=mask_prob
+
         boxes_per_image = [len(box) for box in boxes]
         mask_prob = mask_prob.split(boxes_per_image, dim=0)
 
@@ -57,7 +60,8 @@ class MaskPostProcessor(nn.Module):
                 bbox.add_field(field, box.get_field(field))
             bbox.add_field("mask", prob)
             results.append(bbox)
-
+        if maskiou_on:
+            return results, selected_masks, labels
         return results
 
 

@@ -22,7 +22,10 @@ class MaskIoUPostProcessor(nn.Module):
         num_masks = pred_maskiou.shape[0]
         index = torch.arange(num_masks, device=labels.device)
         maskious = pred_maskiou[index, labels]
-        maskious = [maskious]
+
+        boxes_per_image = [len(box) for box in boxes]
+        maskious = maskious.split(boxes_per_image, dim=0)
+        # maskious = [maskious]
         results = []
         for maskiou, box in zip(maskious, boxes):
             bbox = BoxList(box.bbox, box.size, mode="xyxy")

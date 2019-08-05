@@ -12,6 +12,7 @@ import argparse
 import numpy as np
 from collections import defaultdict
 #import ipdb
+from maskrcnn_benchmark.utils import vis as vis_utils
 
 IMG_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.pgm']
 
@@ -162,21 +163,47 @@ def main():
         os.makedirs(args.output_dir)
 
     for i in range(num_images):
-        print('img', i)
+        print('img', i, imglist[i])
         img = cv2.imread(imglist[i])
+        img_name=os.path.splitext(os.path.basename(imglist[i]))[0]
         assert img is not None
         start_time = time.time()
         #cls_boxes, cls_segms, cls_keyps = im_detect_all(maskRCNN, im, timers=timers)
         composite = uni_demo.run_on_opencv_image(img)
         print("Time: {:.2f} s / img".format(time.time() - start_time))
         if not args.infer_ori:
-            cv2.imwrite(os.path.join(args.output_dir,'res_{}.png'.format(i)), composite)
-            box,masks,classes = nc_demo.detect_all_image(img)
-            class_list = [i for i in range(1,27)]
-            obj_mask_dict = vis_one_image(box,masks,classes,class_list)
+            # cv2.imwrite(os.path.join(args.output_dir,'new_{}.png'.format(img_name)), composite)
+            vis_utils.vis_one_image(
+                img[:, :, ::-1],  # BGR -> RGB for visualization
+                imglist[i],
+                args.output_dir,
+                nc_demo,
+                prefix='new',
+                box_alpha=0.3,
+                show_class=True,
+                thresh=0.7)
+            # box,masks,classes = nc_demo.detect_all_image(img)
+            # class_list = [i for i in range(1,27)]
+            # obj_mask_dict = vis_one_image(box,masks,classes,class_list)
+            # for j in range(masks.shape[2]):
+            #     e = masks[:, :, j]*255
+            #     cv2.imwrite(os.path.join(args.output_dir,'mask_{}_{}.png'.format(i,j)), e)
         else:
-            cv2.imwrite(os.path.join(args.output_dir,'ori_res_{}.png'.format(i)), composite)
-
+            vis_utils.vis_one_image(
+                img[:, :, ::-1],  # BGR -> RGB for visualization
+                imglist[i],
+                args.output_dir,
+                coco_demo,
+                prefix='ori',
+                box_alpha=0.3,
+                show_class=True,
+                thresh=0.7)
+            # cv2.imwrite(os.path.join(args.output_dir,'ori_{}.png'.format(img_name)), composite)
+            #box,masks,classes = coco_demo.detect_all_image(img)
+            #for j in range(masks.shape[2]):
+            #    e = masks[:, :, j]*255
+            #    cv2.imwrite(os.path.join(args.output_dir,'ori_mask_{}_{}.png'.format(i,j)), e)
+        
         #ipdb.set_trace()
         
 if __name__ == "__main__":

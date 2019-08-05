@@ -158,7 +158,23 @@ class COCODemo(object):
             ]
         )
         return transform
-
+    def detect_all_image(self, image):
+        predictions = self.compute_prediction(image)
+        top_predictions = self.select_top_predictions(predictions)
+        
+        bbox = top_predictions.bbox
+        cls = top_predictions.get_field('labels')
+        #1d vector to 2d for cat
+        scores = top_predictions.get_field('scores')[:,None]
+        boxes = torch.cat([bbox,scores],dim=1).cpu().numpy()
+        #from tensor to list
+        classes = cls.tolist()
+        
+        #HACK: the original shape, Num_cls,1,w,h, dont know why it is 1
+        #still a tensor
+        segms = top_predictions.get_field('mask')
+        masks = segms.squeeze(1).permute(1,2,0).cpu().numpy()
+        return boxes, masks, classes
     def run_on_opencv_image(self, image):
         """
         Arguments:

@@ -256,6 +256,7 @@ class NCDemo(object):
             contours, hierarchy = cv2_util.findContours(
                 thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE
             )
+            #draw all contours with width=3
             image = cv2.drawContours(image, contours, -1, color, 3)
 
         composite = image

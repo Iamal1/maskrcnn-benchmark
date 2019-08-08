@@ -111,7 +111,10 @@ def expand_masks(mask, padding):
     pad2 = 2 * padding
     scale = float(M + pad2) / M
     padded_mask = mask.new_zeros((N, 1, M + pad2, M + pad2))
-    padded_mask[:, :, padding:-padding, padding:-padding] = mask
+    if padding==0:
+        padded_mask[:, :, :, :] = mask
+    else:
+        padded_mask[:, :, padding:-padding, padding:-padding] = mask
     return padded_mask, scale
 
 

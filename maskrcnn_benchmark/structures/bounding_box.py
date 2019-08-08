@@ -164,6 +164,38 @@ class BoxList(object):
             bbox.add_field(k, v)
         return bbox.convert(self.mode)
 
+    def refine_to_boundary(self, margin=5):
+        """
+        refine a rectangular region from this bounding box. The box is a
+        4-tuple defining the left, upper, right, and lower pixel
+        coordinate.
+        """
+        w, h = self.size
+        xmin, ymin, xmax, ymax = self._split_into_xyxy()
+        refined_xmin=xmin
+        refined_xmin[xmin<margin]=0
+        refined_ymin=ymin
+        refined_ymin[ymin<margin]=0
+        refined_xmax=xmax
+        refined_xmax[xmax>w-margin]=w
+        refined_ymax=ymax
+        refined_ymax[ymax>h-margin]=h
+
+        # TODO should I filter empty boxes here?
+        if False:
+            is_empty = (refined_xmin == refined_xmax) | (refined_ymin == refined_ymax)
+
+        refined_box = torch.cat(
+            (refined_xmin, refined_ymin, refined_xmax, refined_ymax), dim=-1
+        )
+        bbox = BoxList(refined_box, (w, h), mode="xyxy")
+        bbox._copy_extra_fields(self)
+        # for k, v in self.extra_fields.items():
+        #     if not isinstance(v, torch.Tensor):
+        #         v = v.crop(box)
+        #     bbox.add_field(k, v)
+        return bbox.convert(self.mode)
+
     def crop(self, box):
         """
         Cropss a rectangular region from this bounding box. The box is a
